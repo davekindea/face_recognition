@@ -1,0 +1,374 @@
+\documentclass[aspectratio=169]{beamer}
+
+% ── Theme & Custom Color Palette ──────────────────────────────────────────────
+\usetheme{Madrid}
+\usecolortheme{default}
+
+% Deep professional colors
+\definecolor{deepblue}{RGB}{15, 32, 67}
+\definecolor{cyancol}{RGB}{0, 150, 214}
+\definecolor{accentgreen}{RGB}{46, 125, 50}
+\definecolor{lightgray}{RGB}{245, 245, 247}
+\definecolor{darkgray}{RGB}{80, 80, 80}
+
+% Apply palette to Beamer components
+\setbeamercolor{palette primary}{bg=deepblue, fg=white}
+\setbeamercolor{palette secondary}{bg=deepblue!85, fg=white}
+\setbeamercolor{palette tertiary}{bg=deepblue!70, fg=white}
+\setbeamercolor{palette quaternary}{bg=deepblue, fg=white}
+\setbeamercolor{structure}{fg=deepblue}
+\setbeamercolor{frametitle}{bg=deepblue, fg=white}
+\setbeamercolor{block title}{bg=deepblue, fg=white}
+\setbeamercolor{block body}{bg=lightgray, fg=black}
+\setbeamercolor{item}{fg=deepblue}
+
+% ── Packages ──────────────────────────────────────────────────────────────────
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{colortbl}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{listings}
+\usepackage{tcolorbox}
+\usepackage{multicol}
+\usepackage{hyperref}
+\usepackage{tikz}
+
+% ── Code Listings Style ───────────────────────────────────────────────────────
+\lstset{
+  language=Python,
+  basicstyle=\ttfamily\scriptsize,
+  keywordstyle=\color{cyancol}\bfseries,
+  commentstyle=\color{darkgray}\itshape,
+  stringstyle=\color{orange},
+  frame=single,
+  backgroundcolor=\color{lightgray},
+  breaklines=true,
+  showstringspaces=false
+}
+
+% ── Footer Customization ──────────────────────────────────────────────────────
+\setbeamertemplate{footline}{%
+  \leavevmode%
+  \hbox{%
+    \begin{beamercolorbox}[wd=.33\paperwidth,ht=2.5ex,dp=1.5ex,center]{palette secondary}%
+      \usebeamerfont{author in head/foot}Addis Ababa University
+    \end{beamercolorbox}%
+    \begin{beamercolorbox}[wd=.34\paperwidth,ht=2.5ex,dp=1.5ex,center]{palette primary}%
+      \usebeamerfont{title in head/foot}Deep Learning Course Project
+    \end{beamercolorbox}%
+    \begin{beamercolorbox}[wd=.33\paperwidth,ht=2.5ex,dp=1.5ex,right]{palette tertiary}%
+      \usebeamerfont{date in head/foot}
+      \insertframenumber{} / \inserttotalframenumber\hspace*{2ex}
+    \end{beamercolorbox}%
+  }%
+}
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{headline}{}
+
+% ── Metadata ─────────────────────────────────────────────────────────────────
+\title[Face Recognition]{%
+  \textbf{Deep Learning Face Recognition}\\[0.3em]
+  {\large FaceNet Embeddings + SVM Classifier}
+}
+\subtitle{Deep Learning Course Project}
+\author[Dawit \& Zerihun]{%
+  \textbf{Presenters:}\\
+  Dawit Kindea \and Zerihun\\[0.5em]
+  \textbf{Submitted to:}\\
+  Dr. Fantahun
+}
+\institute[AAU]{%
+  Department of Computer Science\\
+  Addis Ababa University
+}
+\date{\today}
+
+% ══════════════════════════════════════════════════════════════════════════════
+\begin{document}
+% ══════════════════════════════════════════════════════════════════════════════
+
+% ── Title Slide ───────────────────────────────────────────────────────────────
+{
+\setbeamertemplate{footline}{}
+\begin{frame}[plain]
+  \titlepage
+\end{frame}
+}
+
+% ── Outline ───────────────────────────────────────────────────────────────────
+\begin{frame}{Outline}
+  \begin{multicols}{2}
+    \tableofcontents
+  \end{multicols}
+\end{frame}
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Introduction \& Project Goal}
+% ══════════════════════════════════════════════════════════════════════════════
+
+\begin{frame}{Introduction \& Project Goal}
+  \begin{columns}
+    \begin{column}{0.5\textwidth}
+      \begin{block}{The Goal}
+        Build an automated end-to-end system to recognize faces of specific individuals with high confidence.
+      \end{block}
+      \begin{block}{Challenges}
+        \begin{itemize}
+          \item Small datasets per person (9--13 images)
+          \item Varied illumination, poses, and settings
+          \item Different image sizes, formats, and channels
+        \end{itemize}
+      \end{block}
+    \end{column}
+    \begin{column}{0.5\textwidth}
+      \begin{block}{Proposed Pipeline}
+        \begin{enumerate}
+          \item \textbf{Face Detection}: MediaPipe BlazeFace
+          \item \textbf{Feature Extraction}: 128-D FaceNet Embeddings
+          \item \textbf{Normalization}: L2 Norm
+          \item \textbf{Classification}: Support Vector Machine (SVM)
+          \item \textbf{Web Deployment}: Streamlit Interface
+        \end{enumerate}
+      \end{block}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Dataset Description}
+% ══════════════════════════════════════════════════════════════════════════════
+
+\begin{frame}{Dataset Description}
+  \begin{columns}
+    \begin{column}{0.5\textwidth}
+      \begin{block}{Dataset Metrics}
+        \begin{tabular}{ll}
+          \toprule
+          \textbf{Metric} & \textbf{Value}\\
+          \midrule
+          Total Target Identities & 10 people\\
+          Total Sample Images & 111 images\\
+          Average Images/Person & 11.1\\
+          Format & JPG / PNG\\
+          \bottomrule
+        \end{tabular}
+      \end{block}
+    \end{column}
+    \begin{column}{0.5\textwidth}
+      \begin{block}{Target Identities}
+        \begin{multicols}{2}
+          \begin{itemize}\footnotesize
+            \item Albert Einstein
+            \item Cristiano Ronaldo
+            \item Elon Musk
+            \item Michael Jackson
+            \item Nelson Mandela
+            \item PM Dr. Abiy Ahmed
+            \item President Trump
+            \item Robert Oppenheimer
+            \item Seble
+            \item Zach
+          \end{itemize}
+        \end{multicols}
+      \end{block}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Image Preprocessing}
+% ══════════════════════════════════════════════════════════════════════════════
+
+\begin{frame}{Image Preprocessing with MediaPipe}
+  \begin{columns}
+    \begin{column}{0.5\textwidth}
+      \begin{block}{The Preprocessing Pipeline}
+        \begin{enumerate}
+          \item Read raw BGR image using \textbf{OpenCV}
+          \item Convert image to RGB format
+          \item Detect face bounding boxes using \textbf{MediaPipe}
+          \item Crop the primary face region
+          \item Standardize size to \textbf{224 $\times$ 224 pixels}
+          \item Save structured clean images
+        \end{enumerate}
+      \end{block}
+    \end{column}
+    \begin{column}{0.5\textwidth}
+      \begin{block}{Key Detail}
+        BlazeFace detector utilizes a short-range model optimized for fast mobile/web performance.
+        \\[0.5em]
+        Images where no face is detected are safely skipped to avoid contaminating the training set.
+      \end{block}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Feature Extraction --- FaceNet}
+% ══════════════════════════════════════════════════════════════════════════════
+
+\begin{frame}{Feature Extraction via FaceNet}
+  \begin{columns}
+    \begin{column}{0.55\textwidth}
+      \begin{block}{What is FaceNet?}
+        A deep convolutional network trained to directly map face images to a compact Euclidean space.
+        \begin{itemize}
+          \item Distances directly correspond to face similarity.
+          \item Learns robust representation invariant to style/illumination.
+        \end{itemize}
+      \end{block}
+      \begin{block}{Embeddings}
+        \begin{itemize}
+          \item Output representation: \textbf{128-D vector}
+          \item Extracted using \texttt{DeepFace.represent}
+        \end{itemize}
+      \end{block}
+    \end{column}
+    \begin{column}{0.45\textwidth}
+      \begin{block}{L2 Normalization (Critical)}
+        All embeddings must be L2-normalized:
+        \[
+        \hat{x} = \frac{x}{\|x\|_2}
+        \]
+        This projects coordinates onto a unit hypersphere, matching how the FaceNet loss (triplet loss) was trained.
+      \end{block}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Classification --- Support Vector Machine}
+% ══════════════════════════════════════════════════════════════════════════════
+
+\begin{frame}{Classification with Linear SVM}
+  \begin{columns}
+    \begin{column}{0.5\textwidth}
+      \begin{block}{Support Vector Machine (SVM)}
+        Finds the optimal separating hyperplanes between the 10 identities in the 128-D normalized embedding space.
+      \end{block}
+      \begin{block}{Grid Search Optimization}
+        \begin{itemize}
+          \item Optimized using \texttt{GridSearchCV} with 5-Fold Cross-Validation.
+          \item Tested kernels: \texttt{linear}, \texttt{rbf}.
+          \item Tested penalty parameters $C$: \texttt{0.1, 1.0, 10.0}.
+        \end{itemize}
+      \end{block}
+    \end{column}
+    \begin{column}{0.5\textwidth}
+      \begin{block}{Best Classifier Configuration}
+        \begin{tabular}{ll}
+          \toprule
+          \textbf{Parameter} & \textbf{Selection}\\
+          \midrule
+          Kernel & \textbf{Linear}\\
+          $C$ & \textbf{1.0}\\
+          Class Weight & \textbf{Balanced}\\
+          Cross-Val Acc. & \textbf{86.48\%}\\
+          Training Acc. & \textbf{94.59\%}\\
+          \bottomrule
+        \end{tabular}
+      \end{block}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Results \& Evaluation}
+% ══════════════════════════════════════════════════════════════════════════════
+
+\begin{frame}{Results --- Classification Report}
+  \centering
+  \small
+  \begin{tabular}{lcccc}
+    \toprule
+    \textbf{Identity Class} & \textbf{Precision} & \textbf{Recall} & \textbf{F1-Score} & \textbf{Samples (N)}\\
+    \midrule
+    Albert Einstein & 1.00 & 1.00 & 1.00 & 9\\
+    Cristiano Ronaldo & 1.00 & 0.91 & 0.95 & 11\\
+    Elon Musk & 1.00 & 1.00 & 1.00 & 12\\
+    Michael Jackson & 0.85 & 0.92 & 0.88 & 12\\
+    Nelson Mandela & 1.00 & 1.00 & 1.00 & 11\\
+    PM Dr. Abiy Ahmed & 0.92 & 0.92 & 0.92 & 12\\
+    President Trump & 1.00 & 0.90 & 0.95 & 10\\
+    Robert Oppenheimer & 1.00 & 1.00 & 1.00 & 9\\
+    Seble & 0.86 & 0.92 & 0.89 & 13\\
+    Zach & 0.92 & 0.92 & 0.92 & 12\\
+    \midrule
+    \textbf{Average / Total} & \textbf{0.95} & \textbf{0.95} & \textbf{0.95} & \textbf{111}\\
+    \bottomrule
+  \end{tabular}
+\end{frame}
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Streamlit Web Application}
+% ══════════════════════════════════════════════════════════════════════════════
+
+\begin{frame}{Streamlit Web Application Deployment}
+  \begin{columns}
+    \begin{column}{0.5\textwidth}
+      \begin{block}{App Features}
+        \begin{itemize}
+          \item Drag \& Drop image uploader.
+          \item Live prediction showing the classified name.
+          \item Dynamic probability charts (Top-3 match prediction levels).
+          \item Slide control to adjust detection confidence thresholds.
+          \item Gallery section to check dataset images.
+        \end{itemize}
+      \end{block}
+    \end{column}
+    \begin{column}{0.5\textwidth}
+      \begin{block}{Web Deployment Stack}
+        \begin{itemize}
+          \item \textbf{Streamlit}: Frontend dashboard framework.
+          \item \textbf{OpenCV / MediaPipe}: Core processing.
+          \item \textbf{DeepFace}: Embedding extraction.
+          \item \textbf{Joblib}: Pre-trained Linear SVM model loader.
+        \end{itemize}
+      \end{block}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Conclusion \& Future Work}
+% ══════════════════════════════════════════════════════════════════════════════
+
+\begin{frame}{Conclusion \& Future Work}
+  \begin{columns}
+    \begin{column}{0.5\textwidth}
+      \begin{block}{Conclusion}
+        \begin{itemize}
+          \item FaceNet embeddings permit high accuracy classification using simple Linear SVMs.
+          \item L2 normalization is indispensable for stable, correct inference matching.
+          \item The system runs efficiently in real-time under a Streamlit frontend.
+        \end{itemize}
+      \end{block}
+    \end{column}
+    \begin{column}{0.5\textwidth}
+      \begin{block}{Future Improvements}
+        \begin{itemize}
+          \item Integrate real-time camera feeds.
+          \item Apply data augmentation techniques to reduce overfitting.
+          \item Incorporate "Unknown" face calibration models.
+          \item Experiment with ArcFace or state-of-the-art vision transformer backbones.
+        \end{itemize}
+      \end{block}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ══════════════════════════════════════════════════════════════════════════════
+{
+\setbeamertemplate{footline}{}
+\begin{frame}[plain]
+  \centering
+  \vspace{2cm}
+  {\Huge \textcolor{deepblue}{\textbf{Thank You!}}}\\[1.5em]
+  {\Large \textbf{Questions \& Discussion}}\\[0.8em]
+  {\small Addis Ababa University --- Deep Learning Project}
+\end{frame}
+}
+
+\end{document}
