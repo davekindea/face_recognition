@@ -1,18 +1,9 @@
 import os
-import sys
 
 import cv2
 import numpy as np
-import urllib.request
 import joblib
 import streamlit as st
-
-# ── Safe MediaPipe import ─────────────────────────────────────────────────────
-try:
-    import mediapipe as mp
-except ImportError as e:
-    st.error(f"❌ MediaPipe import failed: {e}")
-    st.stop()
 
 # ── DeepFace import (suppress TF noise) ───────────────────────────────────────
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
@@ -124,14 +115,6 @@ IMG_SIZE      = (224, 224)
 DATA_DIR      = 'dataset_cleaned'
 MODEL_FILE    = 'best_model.pkl'
 FACENET_MODEL = 'Facenet'
-TFLITE_MODEL  = os.path.join(os.getcwd(), 'blaze_face_short_range.tflite')
-TFLITE_URL    = ('https://storage.googleapis.com/mediapipe-models/face_detector/'
-                 'blaze_face_short_range/float16/1/blaze_face_short_range.tflite')
-
-# ── Download TFLite detector if needed ───────────────────────────────────────
-if not os.path.exists(TFLITE_MODEL):
-    with st.spinner("Downloading face detector model…"):
-        urllib.request.urlretrieve(TFLITE_URL, TFLITE_MODEL)
 
 # ── Load pre-trained model (cached) ──────────────────────────────────────────
 @st.cache_resource
@@ -140,33 +123,39 @@ def load_model():
     model = joblib.load(MODEL_FILE)
     return model
 
-# ── MediaPipe face detector (cached) ─────────────────────────────────────────
+# ── OpenCV Haar Cascade face detector (cached) ────────────────────────────────
+# Uses the cascade bundled inside OpenCV — no extra downloads or system libs.
 @st.cache_resource
-def get_face_detector(model_path, confidence):
-    opts = mp.tasks.vision.FaceDetectorOptions(
-        base_options=mp.tasks.BaseOptions(model_asset_path=model_path),
-        min_detection_confidence=confidence
-    )
-    return mp.tasks.vision.FaceDetector.create_from_options(opts)
+def get_face_detector(scale_factor, min_neighbors):
+    cascade_path = cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
+    detector = cv2.CascadeClassifier(cascade_path)
+    return detector
 
 # ── Crop face from image ──────────────────────────────────────────────────────
-def crop_face(img_bgr, detector):
-    h, w    = img_bgr.shape[:2]
-    img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
-    mp_img  = mp.Image(image_format=mp.ImageFormat.SRGB, data=img_rgb)
-    result  = detector.detect(mp_img)
-    if result.detections:
-        bb = result.detections[0].bounding_box
-        # Add 10% padding around detected face
-        pad_x = int(bb.width * 0.10)
-        pad_y = int(bb.height * 0.10)
-        x1 = max(0, int(bb.origin_x) - pad_x)
-        y1 = max(0, int(bb.origin_y) - pad_y)
-        x2 = min(w, int(bb.origin_x + bb.width) + pad_x)
-        y2 = min(h, int(bb.origin_y + bb.height) + pad_y)
-        crop = img_bgr[y1:y2, x1:x2]
-        if crop.size > 0:
-            return cv2.resize(crop, IMG_SIZE), (x1, y1, x2, y2)
+def crop_face(img_bgr, detector, scale_factor=1.1, min_neighbors=5):
+    h, w   = img_bgr.shape[:2]
+    gray   = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
+    faces  = detector.detectMultiScale(
+        gray,
+        scaleFactor=scale_factor,
+        minNeighbors=min_neighbors,
+        minSize=(60, 60),
+        flags=cv2.CASCADE_SCALE_IMAGE
+    )
+    if len(faces) == 0:
+        return None, None
+    # Pick largest face
+    x, y, fw, fh = max(faces, key=lambda f: f[2] * f[3])
+    # Add 10% padding
+    pad_x = int(fw * 0.10)
+    pad_y = int(fh * 0.10)
+    x1 = max(0, x - pad_x)
+    y1 = max(0, y - pad_y)
+    x2 = min(w, x + fw + pad_x)
+    y2 = min(h, y + fh + pad_y)
+    crop = img_bgr[y1:y2, x1:x2]
+    if crop.size > 0:
+        return cv2.resize(crop, IMG_SIZE), (x1, y1, x2, y2)
     return None, None
 
 # ── Helper: known people list ─────────────────────────────────────────────────
@@ -225,7 +214,7 @@ class_names = get_class_names()
 #  HEADER
 # ═══════════════════════════════════════════════════════════════════════════════
 st.markdown("<h1>🧠 Deep Learning Face Recognition</h1>", unsafe_allow_html=True)
-st.markdown("##### FaceNet embeddings · SVM classifier · MediaPipe face detection")
+st.markdown("##### FaceNet embeddings · SVM classifier · OpenCV face detection")
 st.markdown("---")
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -318,7 +307,7 @@ if uploaded_file is not None:
     with col2:
         st.markdown("#### 🔍 Recognition Result")
 
-        detector = get_face_detector(TFLITE_MODEL, min_confidence)
+        detector = get_face_detector(1.1, int(min_confidence * 10))
         cropped_face, bbox = crop_face(image_bgr, detector)
 
         if cropped_face is None:
