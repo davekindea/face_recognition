@@ -3,42 +3,51 @@ import sys
 import subprocess
 
 # ── Headless OpenCV Redirect ──────────────────────────────────────────────────
-# Streamlit Cloud has a pre-installed opencv-python (not headless) which can't
-# be removed. We install opencv-python-headless to a writable user directory
-# and put it first on sys.path. Use version >=4.10 which supports NumPy 2.x.
-TARGET_DIR = os.path.abspath(os.path.join(os.path.expanduser("~"), ".local_headless_cv2"))
+# Streamlit Cloud pre-installs opencv-python (NumPy 1.x compiled) which cannot
+# be uninstalled. We install opencv-python-headless >=4.10 (NumPy 2.x compatible)
+# into a versioned writable directory and inject it first on sys.path.
+# Directory name includes version tag "_v410" — changing it busts stale caches.
+TARGET_DIR = os.path.abspath(
+    os.path.join(os.path.expanduser("~"), ".cv2_headless_v410")
+)
 
-if not os.path.exists(TARGET_DIR):
-    try:
-        os.makedirs(TARGET_DIR, exist_ok=True)
-    except Exception:
-        TARGET_DIR = "/tmp/local_headless_cv2"
-        os.makedirs(TARGET_DIR, exist_ok=True)
+try:
+    os.makedirs(TARGET_DIR, exist_ok=True)
+except Exception:
+    TARGET_DIR = "/tmp/cv2_headless_v410"
+    os.makedirs(TARGET_DIR, exist_ok=True)
 
-# Install if cv2 is not already in target directory
-if not os.path.exists(os.path.join(TARGET_DIR, "cv2")):
+# Use a marker file to track successful installs, not just directory existence
+MARKER = os.path.join(TARGET_DIR, ".installed_ok")
+
+if not os.path.exists(MARKER):
     try:
         subprocess.run([
             sys.executable, "-m", "pip", "install",
             "--target", TARGET_DIR,
             "--ignore-installed",
+            "--upgrade",
             "opencv-python-headless>=4.10.0"
         ], check=True, capture_output=True)
+        # Write marker only on success
+        with open(MARKER, "w") as f:
+            f.write("4.10.0+")
     except subprocess.CalledProcessError as install_err:
         import streamlit as st
-        st.error(f"❌ Failed to install headless OpenCV: {install_err.stderr.decode()}")
+        stderr_msg = install_err.stderr.decode() if install_err.stderr else str(install_err)
+        st.error(f"❌ Failed to install headless OpenCV:\n\n{stderr_msg}")
         st.stop()
 
-# Force Python to load our headless version from TARGET_DIR first
+# Inject our directory first so it shadows the system's broken cv2
 if TARGET_DIR not in sys.path:
     sys.path.insert(0, TARGET_DIR)
 
-# Verify import
+# Verify the import works
 try:
     import cv2
 except Exception as e:
     import streamlit as st
-    st.error(f"❌ OpenCV import failed. Make sure opencv-python-headless is in requirements.txt and packages.txt has the system libraries.\n\nError: {e}")
+    st.error(f"❌ OpenCV import failed: {e}")
     st.stop()
 
 import numpy as np
