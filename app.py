@@ -1,11 +1,34 @@
-import streamlit as st
-import cv2
 import os
+import sys
 import numpy as np
-from deepface import DeepFace
-import joblib
 import urllib.request
-import mediapipe as mp
+import joblib
+import streamlit as st
+
+# ── Safe OpenCV import (headless-compatible) ──────────────────────────────────
+try:
+    import cv2
+except ImportError as e:
+    st.error(
+        "❌ OpenCV import failed. Make sure `opencv-python-headless` is in requirements.txt "
+        f"and `packages.txt` has the system libraries.\n\nError: {e}"
+    )
+    st.stop()
+
+# ── Safe MediaPipe import ─────────────────────────────────────────────────────
+try:
+    import mediapipe as mp
+except ImportError as e:
+    st.error(f"❌ MediaPipe import failed: {e}")
+    st.stop()
+
+# ── DeepFace import (suppress TF noise) ───────────────────────────────────────
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
+try:
+    from deepface import DeepFace
+except ImportError as e:
+    st.error(f"❌ DeepFace import failed: {e}")
+    st.stop()
 
 # ── Page Config ───────────────────────────────────────────────────────────────
 st.set_page_config(
