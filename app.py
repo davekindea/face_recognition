@@ -21,6 +21,8 @@ if not os.path.exists(os.path.join(TARGET_DIR, "cv2")):
         subprocess.run([
             sys.executable, "-m", "pip", "install", 
             "--target", TARGET_DIR, 
+            "--ignore-installed",
+            "--no-deps",
             "opencv-python-headless>=4.5.0,<4.10.0"
         ], check=True)
     except Exception as install_err:
