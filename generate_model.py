@@ -1,19 +1,23 @@
-import pandas as pd
+import sys
+import os
+
+# Fix Windows terminal encoding (emoji/unicode support)
+if sys.stdout.encoding != 'utf-8':
+    sys.stdout = open(sys.stdout.fileno(), mode='w', encoding='utf-8', buffering=1)
+
 import numpy as np
 from deepface import DeepFace
-from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.svm import SVC
-from sklearn.neighbors import KNeighborsClassifier
 from sklearn.metrics import accuracy_score
 import joblib
-import os
 import logging
 logging.getLogger("deepface").setLevel(logging.ERROR)
 
 DATA_DIR = 'dataset_cleaned'
 MODEL_NAME = 'Facenet'
+MODEL_EXPORT_PATH = "best_model.pkl"
 
-print("Extracting embeddings for the dataset...")
+print("Extracting/Loading embeddings for the dataset...")
 data = []
 labels = []
 class_names = sorted([c for c in os.listdir(DATA_DIR) if os.path.isdir(os.path.join(DATA_DIR, c))])
@@ -38,22 +42,19 @@ y = np.array(labels)
 print(f"Extracted {len(X)} embeddings for {len(class_names)} people.")
 
 if len(X) > 0:
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+    # L2 normalize embeddings
+    X_norm = X / np.linalg.norm(X, axis=1, keepdims=True)
     
-    print("Tuning SVM Classifier...")
-    svm_param_grid = {'C': [0.1, 1, 10, 100], 'kernel': ['linear', 'rbf']}
-    svm_grid = GridSearchCV(SVC(probability=True), svm_param_grid, cv=3)
-    svm_grid.fit(X_train, y_train)
+    print("Training Linear SVM on the entire dataset...")
+    best_svm = SVC(probability=True, kernel='linear', C=1.0)
+    best_svm.fit(X_norm, y)
     
-    best_svm = svm_grid.best_estimator_
-    print(f"Best SVM Parameters: {svm_grid.best_params_}")
+    # Calculate training accuracy
+    train_preds = best_svm.predict(X_norm)
+    train_acc = accuracy_score(y, train_preds)
+    print(f"Linear SVM Training Accuracy: {train_acc*100:.2f}%")
     
-    svm_pred = best_svm.predict(X_test)
-    svm_acc = accuracy_score(y_test, svm_pred)
-    print(f"SVM Test Accuracy: {svm_acc*100:.2f}%")
-    
-    model_export_path = "best_model.pkl"
-    joblib.dump(best_svm, model_export_path)
-    print(f"Saved the best model to {model_export_path} for production deployment!")
+    joblib.dump(best_svm, MODEL_EXPORT_PATH)
+    print(f"Saved the best model to {MODEL_EXPORT_PATH} for production deployment!")
 else:
     print("No data extracted. Ensure dataset_cleaned has images.")
