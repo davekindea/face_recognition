@@ -301,6 +301,41 @@
   \end{tabular}
 \end{frame}
 
+\begin{frame}{Results --- Model Comparison (SVM vs. KNN)}
+  \begin{columns}
+    \begin{column}{0.5\textwidth}
+      \begin{block}{Model Accuracy (80/20 Split)}
+        \begin{tabular}{lc}
+          \toprule
+          \textbf{Classifier} & \textbf{Test Accuracy}\\
+          \midrule
+          \textbf{Linear SVM ($C=1$)} & \textbf{86.96\%}\\
+          \textbf{Cosine KNN ($k=1$)} & \textbf{91.30\%}\\
+          \bottomrule
+        \end{tabular}
+        \\[0.5em]
+        \footnotesize
+        While KNN shows a slightly higher accuracy on this split, it lacks probability scaling and does not generalize as well on outlier rejections.
+      \end{block}
+    \end{column}
+    \begin{column}{0.5\textwidth}
+      \begin{block}{Inference Latency (Prediction Speed)}
+        \begin{tabular}{lc}
+          \toprule
+          \textbf{Classifier} & \textbf{Inference Time}\\
+          \midrule
+          \textbf{Linear SVM} & \textbf{0.71 ms}\\
+          \textbf{Cosine KNN} & \textbf{5.15 ms}\\
+          \bottomrule
+        \end{tabular}
+        \\[0.5em]
+        \footnotesize
+        The SVM classifier performs inference **7.2$\times$ faster** than KNN, making it the choice for real-time web applications.
+      \end{block}
+    \end{column}
+  \end{columns}
+\end{frame}
+
 % ══════════════════════════════════════════════════════════════════════════════
 \section{Streamlit Web Application}
 % ══════════════════════════════════════════════════════════════════════════════

@@ -285,14 +285,30 @@ if "last_result" not in st.session_state:
     st.session_state.last_result = None
 
 # ═══════════════════════════════════════════════════════════════════════════════
-#  UPLOAD & PREDICT
+#  INPUT METHOD Selection
 # ═══════════════════════════════════════════════════════════════════════════════
-st.markdown("### 📸 Upload a Face Image")
-uploaded_file = st.file_uploader(
-    "Drag & drop or click to browse — supports JPG · JPEG · PNG · WEBP",
-    type=["jpg", "jpeg", "png", "webp"],
-    key=f"uploader_{st.session_state.uploader_key}"
-)
+tab1, tab2 = st.tabs(["📁 File Upload", "📷 Live Webcam Capture"])
+
+uploaded_file = None
+
+with tab1:
+    st.markdown("### 📸 Upload a Face Image")
+    file_upload = st.file_uploader(
+        "Drag & drop or click to browse — supports JPG · JPEG · PNG · WEBP",
+        type=["jpg", "jpeg", "png", "webp"],
+        key=f"uploader_{st.session_state.uploader_key}"
+    )
+    if file_upload is not None:
+        uploaded_file = file_upload
+
+with tab2:
+    st.markdown("### 📷 Live Webcam Capture")
+    webcam_upload = st.camera_input(
+        "Capture a face photo from your webcam", 
+        key=f"camera_{st.session_state.uploader_key}"
+    )
+    if webcam_upload is not None:
+        uploaded_file = webcam_upload
 
 if uploaded_file is not None:
     file_bytes = np.asarray(bytearray(uploaded_file.read()), dtype=np.uint8)
@@ -383,8 +399,8 @@ else:
     <div style='text-align:center;padding:60px 20px;
                 border:2px dashed rgba(0,212,255,0.2);
                 border-radius:20px;color:#555;margin-top:20px'>
-        <h2 style='color:#444'>📂 Upload an Image to Begin</h2>
-        <p>Supports JPG · JPEG · PNG · WEBP</p>
+        <h2 style='color:#444'>📂 Upload an Image or Use Webcam to Begin</h2>
+        <p>Supports file uploads (JPG, PNG, WEBP) or live webcam capture</p>
         <p style='color:#333;font-size:0.85rem'>The model recognizes: Albert Einstein, Cristiano Ronaldo, Elon Musk,<br>
         Michael Jackson, Nelson Mandela, PM Dr. Abiy, President Trump,<br>
         Robert Oppenheimer, Seble, Zach</p>
