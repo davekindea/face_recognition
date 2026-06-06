@@ -1,4 +1,6 @@
 venv/
 .venv/
 __pycache__/
-*.pkl
+dataset/
+dataset_cleaned/
+*.ipynb_checkpoints
