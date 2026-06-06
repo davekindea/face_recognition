@@ -3,9 +3,9 @@ import sys
 import subprocess
 
 # ── Headless OpenCV Redirect ──────────────────────────────────────────────────
-# Streamlit Community Cloud installs standard opencv-python, which lacks headless
-# system dependencies. We override it by installing opencv-python-headless to a
-# writable user directory and prioritizing it in sys.path.
+# Streamlit Cloud has a pre-installed opencv-python (not headless) which can't
+# be removed. We install opencv-python-headless to a writable user directory
+# and put it first on sys.path. Use version >=4.10 which supports NumPy 2.x.
 TARGET_DIR = os.path.abspath(os.path.join(os.path.expanduser("~"), ".local_headless_cv2"))
 
 if not os.path.exists(TARGET_DIR):
@@ -15,31 +15,30 @@ if not os.path.exists(TARGET_DIR):
         TARGET_DIR = "/tmp/local_headless_cv2"
         os.makedirs(TARGET_DIR, exist_ok=True)
 
-# Install if cv2 is not present in target directory
+# Install if cv2 is not already in target directory
 if not os.path.exists(os.path.join(TARGET_DIR, "cv2")):
     try:
         subprocess.run([
-            sys.executable, "-m", "pip", "install", 
-            "--target", TARGET_DIR, 
+            sys.executable, "-m", "pip", "install",
+            "--target", TARGET_DIR,
             "--ignore-installed",
-            "--no-deps",
-            "opencv-python-headless>=4.5.0,<4.10.0"
-        ], check=True)
-    except Exception as install_err:
+            "opencv-python-headless>=4.10.0"
+        ], check=True, capture_output=True)
+    except subprocess.CalledProcessError as install_err:
         import streamlit as st
-        st.error(f"❌ Failed to install headless OpenCV: {install_err}")
+        st.error(f"❌ Failed to install headless OpenCV: {install_err.stderr.decode()}")
         st.stop()
 
-# Force Python to load our headless version from TARGET_DIR
+# Force Python to load our headless version from TARGET_DIR first
 if TARGET_DIR not in sys.path:
     sys.path.insert(0, TARGET_DIR)
 
 # Verify import
 try:
     import cv2
-except ImportError as e:
+except Exception as e:
     import streamlit as st
-    st.error(f"❌ OpenCV import failed after redirect: {e}")
+    st.error(f"❌ OpenCV import failed. Make sure opencv-python-headless is in requirements.txt and packages.txt has the system libraries.\n\nError: {e}")
     st.stop()
 
 import numpy as np
