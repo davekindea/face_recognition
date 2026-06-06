@@ -1,19 +1,29 @@
 import os
 import sys
+import subprocess
+
+# ── Self-healing OpenCV headless installation guard ────────────────────────────
+try:
+    import cv2
+except ImportError as e:
+    # If standard opencv-python or opencv-contrib-python was installed (e.g. pulled
+    # by mediapipe or deepface dependencies), it will crash with missing shared libraries
+    # (libGL.so.1, libgthread-2.0.so.0). We force-replace it with opencv-python-headless.
+    try:
+        subprocess.run([sys.executable, "-m", "pip", "uninstall", "-y", "opencv-python", "opencv-contrib-python", "opencv-python-headless"], check=True)
+        subprocess.run([sys.executable, "-m", "pip", "install", "opencv-python-headless>=4.5.0,<4.10.0"], check=True)
+        import cv2
+    except Exception as install_err:
+        import streamlit as st
+        st.error(
+            f"❌ Automatic self-healing of OpenCV failed. Please contact support.\n\nError: {install_err}"
+        )
+        st.stop()
+
 import numpy as np
 import urllib.request
 import joblib
 import streamlit as st
-
-# ── Safe OpenCV import (headless-compatible) ──────────────────────────────────
-try:
-    import cv2
-except ImportError as e:
-    st.error(
-        "❌ OpenCV import failed. Make sure `opencv-python-headless` is in requirements.txt "
-        f"and `packages.txt` has the system libraries.\n\nError: {e}"
-    )
-    st.stop()
 
 # ── Safe MediaPipe import ─────────────────────────────────────────────────────
 try:
