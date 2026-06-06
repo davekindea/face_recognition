@@ -2,23 +2,43 @@ import os
 import sys
 import subprocess
 
-# ── Self-healing OpenCV headless installation guard ────────────────────────────
+# ── Headless OpenCV Redirect ──────────────────────────────────────────────────
+# Streamlit Community Cloud installs standard opencv-python, which lacks headless
+# system dependencies. We override it by installing opencv-python-headless to a
+# writable user directory and prioritizing it in sys.path.
+TARGET_DIR = os.path.abspath(os.path.join(os.path.expanduser("~"), ".local_headless_cv2"))
+
+if not os.path.exists(TARGET_DIR):
+    try:
+        os.makedirs(TARGET_DIR, exist_ok=True)
+    except Exception:
+        TARGET_DIR = "/tmp/local_headless_cv2"
+        os.makedirs(TARGET_DIR, exist_ok=True)
+
+# Install if cv2 is not present in target directory
+if not os.path.exists(os.path.join(TARGET_DIR, "cv2")):
+    try:
+        subprocess.run([
+            sys.executable, "-m", "pip", "install", 
+            "--target", TARGET_DIR, 
+            "opencv-python-headless>=4.5.0,<4.10.0"
+        ], check=True)
+    except Exception as install_err:
+        import streamlit as st
+        st.error(f"❌ Failed to install headless OpenCV: {install_err}")
+        st.stop()
+
+# Force Python to load our headless version from TARGET_DIR
+if TARGET_DIR not in sys.path:
+    sys.path.insert(0, TARGET_DIR)
+
+# Verify import
 try:
     import cv2
 except ImportError as e:
-    # If standard opencv-python or opencv-contrib-python was installed (e.g. pulled
-    # by mediapipe or deepface dependencies), it will crash with missing shared libraries
-    # (libGL.so.1, libgthread-2.0.so.0). We force-replace it with opencv-python-headless.
-    try:
-        subprocess.run([sys.executable, "-m", "pip", "uninstall", "-y", "opencv-python", "opencv-contrib-python", "opencv-python-headless"], check=True)
-        subprocess.run([sys.executable, "-m", "pip", "install", "opencv-python-headless>=4.5.0,<4.10.0"], check=True)
-        import cv2
-    except Exception as install_err:
-        import streamlit as st
-        st.error(
-            f"❌ Automatic self-healing of OpenCV failed. Please contact support.\n\nError: {install_err}"
-        )
-        st.stop()
+    import streamlit as st
+    st.error(f"❌ OpenCV import failed after redirect: {e}")
+    st.stop()
 
 import numpy as np
 import urllib.request
